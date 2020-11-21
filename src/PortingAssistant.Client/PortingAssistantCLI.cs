@@ -19,7 +19,7 @@ namespace PortingAssistant.Client.CLI
 
         public string PortingProjectPath { get; set; }
 
-        [Option('o', "ouput-path", Required = true, HelpText = "output folder.")]
+        [Option('o', "output-path", Required = true, HelpText = "output folder.")]
         public string OutputPath { get; set; }
 
         [Option('i', "ignore-projects", Separator = ',', Required = false, HelpText = "ignore projects in the solution")]
@@ -66,7 +66,7 @@ namespace PortingAssistant.Client.CLI
                     }
                     SolutionPath = o.SolutionPath;
 
-                    if (o.OutputPath == null || o.OutputPath.Length == 0)
+                    if (string.IsNullOrEmpty(o.OutputPath))
                     {
                         Console.WriteLine("Invalid output path " + OutputPath);
                         Environment.Exit(-1);

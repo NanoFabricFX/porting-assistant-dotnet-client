@@ -61,7 +61,7 @@ namespace PortingAssistant.Client.NuGet
             {
                 try
                 {
-                    var compatibilityResults = compatibilityChecker.CheckAsync(distinctPackageVersions, pathToSolution);
+                    var compatibilityResults = compatibilityChecker.Check(distinctPackageVersions, pathToSolution);
                     await Task.WhenAll(compatibilityResults.Select(result =>
                     {
                         return result.Value.ContinueWith(task =>
@@ -95,6 +95,7 @@ namespace PortingAssistant.Client.NuGet
             {
                 if (_compatibilityTaskCompletionSources.TryGetValue(packageVersion, out var packageVersionPairResult))
                 {
+                    _logger.LogError($"Cound not find package {packageVersion} in all sources");
                     var defaultErrorMessage = $"Could not find package {packageVersion}. Compatibility task status: {packageVersionPairResult.Task.Status}.";
                     var defaultException = new PortingAssistantClientException(ExceptionMessage.PackageNotFound(packageVersion), new PackageNotFoundException(defaultErrorMessage));
                     var exception = exceptions.GetValueOrDefault(packageVersion, defaultException);
