@@ -18,6 +18,7 @@ namespace PortingAssistant.Client.Tests
         private Mock<IPortingAssistantNuGetHandler> _handler;
         private Dictionary<PackageVersionPair, Task<PackageDetails>> packageResults;
         private Dictionary<string, Task<RecommendationDetails>> recommendationResults;
+        private static string DEFAULT_TARGET = "netcoreapp3.1";
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
@@ -122,11 +123,11 @@ namespace PortingAssistant.Client.Tests
             };
 
             var result = InvocationExpressionModelToInvocations.AnalyzeResults(
-                sourceFileToInvocations, packageResults, recommendationResults);
+                sourceFileToInvocations, packageResults, recommendationResults, new Dictionary<string, List<RecommendedAction>>());
 
             Assert.AreEqual(1, result.First().ApiAnalysisResults.Count);
             Assert.AreEqual("11.0.1", result.First().ApiAnalysisResults.First().CodeEntityDetails.Package.Version);
-            Assert.AreEqual(Compatibility.COMPATIBLE, result.First().ApiAnalysisResults.First().CompatibilityResults.GetValueOrDefault(ApiCompatiblity.DEFAULT_TARGET).Compatibility);
+            Assert.AreEqual(Compatibility.COMPATIBLE, result.First().ApiAnalysisResults.First().CompatibilityResults.GetValueOrDefault(DEFAULT_TARGET).Compatibility);
             Assert.AreEqual("12.0.3", result[0].ApiAnalysisResults[0].Recommendations.RecommendedActions.First().Description);
         }
 
@@ -144,11 +145,11 @@ namespace PortingAssistant.Client.Tests
             };
 
             var result = InvocationExpressionModelToInvocations.AnalyzeResults(
-                sourceFileToInvocations, new Dictionary<PackageVersionPair, Task<PackageDetails>>(), recommendationResults);
+                sourceFileToInvocations, new Dictionary<PackageVersionPair, Task<PackageDetails>>(), recommendationResults, new Dictionary<string, List<RecommendedAction>>());
 
             Assert.AreEqual(1, result.First().ApiAnalysisResults.Count);
             Assert.AreEqual("11.0.1", result.First().ApiAnalysisResults.First().CodeEntityDetails.Package.Version);
-            Assert.AreEqual(Compatibility.UNKNOWN, result.First().ApiAnalysisResults.First().CompatibilityResults.GetValueOrDefault(ApiCompatiblity.DEFAULT_TARGET).Compatibility);
+            Assert.AreEqual(Compatibility.UNKNOWN, result.First().ApiAnalysisResults.First().CompatibilityResults.GetValueOrDefault(DEFAULT_TARGET).Compatibility);
             Assert.IsNull(result[0].ApiAnalysisResults[0].Recommendations.RecommendedActions.First().Description);
         }
 

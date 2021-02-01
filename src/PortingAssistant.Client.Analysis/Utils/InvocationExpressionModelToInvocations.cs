@@ -15,7 +15,9 @@ namespace PortingAssistant.Client.Analysis.Utils
         public static List<SourceFileAnalysisResult> AnalyzeResults(
             Dictionary<string, List<CodeEntityDetails>> sourceFileToInvocations,
             Dictionary<PackageVersionPair, Task<PackageDetails>> packageResults,
-            Dictionary<string, Task<RecommendationDetails>> recommendationResults
+            Dictionary<string, Task<RecommendationDetails>> recommendationResults,
+            Dictionary<string, List<RecommendedAction>> portingActionResults,
+            string targetFramework = "netcoreapp3.1"
         )
         {
             var packageDetailsWithIndicesResults = ApiCompatiblity.PreProcessPackageDetails(packageResults);
@@ -25,6 +27,7 @@ namespace PortingAssistant.Client.Analysis.Utils
                 {
                     SourceFileName = Path.GetFileName(sourceFile.Key),
                     SourceFilePath = sourceFile.Key,
+                    RecommendedActions = portingActionResults.GetValueOrDefault(sourceFile.Key, new List<RecommendedAction>()),
                     ApiAnalysisResults = sourceFile.Value.Select(invocation =>
                     {
                         var package = invocation.Package;
@@ -34,13 +37,15 @@ namespace PortingAssistant.Client.Analysis.Utils
                         var packageDetails = packageDetailsWithIndicesResults.GetValueOrDefault(package, null);
                         var compatibilityResultWithPackage = ApiCompatiblity.GetCompatibilityResult(packageDetails,
                                                  invocation.OriginalDefinition,
-                                                 invocation.Package.Version);
+                                                 invocation.Package.Version,
+                                                 targetFramework);
 
                         // potential check with namespace
                         var sdkpackageDetails = packageDetailsWithIndicesResults.GetValueOrDefault(sdkpackage, null);
                         var compatibilityResultWithSdk = ApiCompatiblity.GetCompatibilityResult(sdkpackageDetails,
                                                  invocation.OriginalDefinition,
-                                                 invocation.Package.Version);
+                                                 invocation.Package.Version,
+                                                 targetFramework);
 
                         var compatibilityResult = GetCompatibilityResult(compatibilityResultWithPackage, compatibilityResultWithSdk);
 
@@ -48,7 +53,8 @@ namespace PortingAssistant.Client.Analysis.Utils
                         var apiRecommendation = ApiCompatiblity.UpgradeStrategy(
                                                 compatibilityResult,
                                                 invocation.OriginalDefinition,
-                                                recommendationDetails);
+                                                recommendationDetails,
+                                                targetFramework);
 
 
                         return new ApiAnalysisResult
@@ -56,9 +62,9 @@ namespace PortingAssistant.Client.Analysis.Utils
                             CodeEntityDetails = invocation,
                             CompatibilityResults = new Dictionary<string, CompatibilityResult>
                             {
-                                { ApiCompatiblity.DEFAULT_TARGET, compatibilityResult}
+                                { targetFramework, compatibilityResult}
                             },
-                            Recommendations = new Recommendations
+                            Recommendations = new PortingAssistant.Client.Model.Recommendations
                             {
                                 RecommendedActions = new List<RecommendedAction>
                                 {
@@ -83,7 +89,6 @@ namespace PortingAssistant.Client.Analysis.Utils
                     sourceFile.Key,
                     sourceFile.Value.Select(invocation =>
                     {
-
                         var assemblyLength = invocation.Reference?.Assembly?.Length;
                         if (assemblyLength == null || assemblyLength == 0)
                         {
@@ -92,18 +97,18 @@ namespace PortingAssistant.Client.Analysis.Utils
 
                         // Check if invocation is from Nuget
                         var potentialNugetPackage = analyzer?.ProjectResult?.ExternalReferences?.NugetReferences?.Find((n) =>
-                           n.AssemblyLocation?.EndsWith(invocation.Reference.Assembly + ".dll") == true);
+                           n.AssemblyLocation?.EndsWith(invocation.Reference.Assembly + ".dll") == true || n.Identity.Equals(invocation.Reference.Assembly));
 
                         if (potentialNugetPackage == null)
                         {
                             potentialNugetPackage = analyzer?.ProjectResult?.ExternalReferences?.NugetDependencies?.Find((n) =>
-                           n.AssemblyLocation?.EndsWith(invocation.Reference.Assembly + ".dll") == true);
+                           n.AssemblyLocation?.EndsWith(invocation.Reference.Assembly + ".dll") == true || n.Identity.Equals(invocation.Reference.Assembly));
                         }
                         PackageVersionPair nugetPackage = ReferenceToPackageVersionPair(potentialNugetPackage);
 
                         // Check if invocation is from SDK
                         var potentialSdk = analyzer?.ProjectResult?.ExternalReferences?.SdkReferences?.Find((s) =>
-                            s.AssemblyLocation?.EndsWith(invocation.Reference.Assembly + ".dll") == true);
+                            s.AssemblyLocation?.EndsWith(invocation.Reference.Assembly + ".dll") == true || s.Identity.Equals(invocation.Reference.Assembly));
                         PackageVersionPair sdk = ReferenceToPackageVersionPair(potentialSdk, PackageSourceType.SDK);
 
                         // If both nuget package and sdk are null, this invocation is from an internal project. Skip it.
